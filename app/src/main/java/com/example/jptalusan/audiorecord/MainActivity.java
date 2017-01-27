@@ -9,10 +9,10 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Spinner;
+import android.widget.TextView;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -33,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
     private double mRmsSmoothed = 0;
     private String audioFileName = "";
     private File audioLogFile;
+    private TextView name;
 
     //https://developer.android.com/guide/topics/ui/controls/spinner.html
     private Spinner sampleRates;
@@ -47,6 +48,8 @@ public class MainActivity extends AppCompatActivity {
 
         bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
                 RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
+
+        name = (TextView)findViewById(R.id.textView);
 
         System.out.println("Buff size: " + bufferSize);
     }
@@ -88,6 +91,9 @@ public class MainActivity extends AppCompatActivity {
                 RECORDER_SAMPLERATE, RECORDER_CHANNELS,
                 RECORDER_AUDIO_ENCODING, bufferSize);
 
+        audioFileName = Utilities.generateFileName();
+        name.setText(audioFileName);
+
         recorder.startRecording();
         isRecording = true;
         recordingThread = new Thread(new Runnable() {
@@ -114,12 +120,12 @@ public class MainActivity extends AppCompatActivity {
     private void writeAudioDataToFile() {
         // Write the output audio in byte
         FileWriter audioLog;
-        //TODO: Change to human readable date names HOUR:MIN-DAY-MONTH-YEAR.file_ext
-        audioFileName = Utilities.generateFileName();
+
         audioLogFile = new File(Environment.getExternalStorageDirectory().getPath() + "/" + audioFileName + "_raw.csv");
         try {
             audioLogFile.createNewFile();
             audioLog = new FileWriter(audioLogFile, true);
+            audioLog.write("Timestamp, myEquation, theirEquation");
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to create " + audioFileName);
         }
@@ -138,19 +144,14 @@ public class MainActivity extends AppCompatActivity {
             // gets the voice output from microphone to byte format
 
             recorder.read(sData, 0, BufferElements2Rec * BytesPerElement);
-            //System.out.println("Short writing to file: " + sData.toString());
             try {
                 // // writes the data to file from buffer
                 // // stores the voice buffer
                 int out = Utilities.calculatePowerDb(sData, 0, BufferElements2Rec * BytesPerElement);
-//                double out2 = getPower();
-//                double out4 = Utilities.getPower2(sData);
-
-                //TODO: Move bData above (Same as sData) so it wont be wrong values.
+                // Just a short snippet to prevent no data errors
+                out = out < -70 ? -70 : out;
+                double out5 = Utilities.getPower(sData);
                 byte bData[] = short2byte(sData);
-//                int out3 = Utilities.calculatePowerDb(bData, 0, BufferElements2Rec * BytesPerElement);
-                double out5 = Utilities.getPower(bData);
-//                System.out.println("out:" + out + ", out3:" + out3  + ", out4:" + out4 +  ", double:" + out2 + ", double2:" + out5);
                 String audioData = Utilities.setupDate() + "," + out + "," + out5;
                 audioLog.write(audioData + "\r\n");
                 os.write(bData, 0, BufferElements2Rec * BytesPerElement * BytesPerElement);
@@ -165,34 +166,6 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public double getPower(){
-        Log.d("RMS", mRmsSmoothed + "");
-        byte[] buffer = new byte[BufferElements2Rec * BytesPerElement];
-        //int read (byte[] audioData, int offsetInBytes, int sizeInBytes)
-        recorder.read(buffer, 0, BufferElements2Rec * BytesPerElement);
-        /*
-         * Noise level meter begins here
-         */
-        // Compute the RMS value. (Note that this does not remove DC).
-        double rms = 0;
-        for (int i = 0; i < buffer.length; i++) {
-            rms += buffer[i] * buffer[i];
-        }
-        rms = Math.sqrt(rms / buffer.length);
-        double mAlpha = 0.9;
-        double mGain = 0.0044;
-        /*Compute a smoothed version for less flickering of the
-        // display.*/
-        mRmsSmoothed = mRmsSmoothed * mAlpha + (1 - mAlpha) * rms;
-//		Log.w("rain316", "RMS Smoothed: " + Double.toString(mRmsSmoothed));
-        double rmsdB = -1;
-        if (mGain * mRmsSmoothed > 0.0f)
-            rmsdB = 20.0 * Math.log10(mGain * mRmsSmoothed);
-        else rmsdB = -30.0;
-        //Log.w("rain316", "RMS dB: " + Double.toString(rmsdB));
-        return rmsdB;
     }
 
     private void stopRecording() {
