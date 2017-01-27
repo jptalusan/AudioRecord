@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">AudioRecord</string>
+    <string-array name="sample_rates">
+        <item>8000</item>
+        <item>16000</item>
+        <item>44100</item>
+    </string-array>
+</resources>
