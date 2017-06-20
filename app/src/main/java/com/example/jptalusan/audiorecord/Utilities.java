@@ -1,10 +1,15 @@
 package com.example.jptalusan.audiorecord;
 
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.util.Log;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -13,7 +18,7 @@ import java.util.Locale;
 
 public class Utilities {
     //https://www.dsprelated.com/showthread/comp.dsp/29246-1.php
-
+    private static final String TAG = "Utilities";
     private static double mRmsSmoothed = 0;
 
     private static final float MAX_16_BIT = 32768;
@@ -78,5 +83,40 @@ public class Utilities {
         else rmsdB = -30.0;
         //Log.w("rain316", "RMS dB: " + Double.toString(rmsdB));
         return rmsdB;
+    }
+
+
+
+    public static List<Integer> findAudioRecord() {
+        List<Integer> output = new ArrayList<>();
+        int mSampleRates[] = new int[] { 8000, 11025, 16000, 22050,
+                32000, 37800, 44056, 44100, 47250, 4800, 50000, 50400, 88200,
+                96000, 176400, 192000, 352800, 2822400, 5644800 };
+
+        for (int rate : mSampleRates) {
+            for (short audioFormat : new short[] { AudioFormat.ENCODING_PCM_16BIT }) {
+                for (short channelConfig : new short[] { AudioFormat.CHANNEL_IN_MONO }) {
+                    try {
+//                        Log.d(TAG, "Attempting rate " + rate + "Hz, bits: " + audioFormat + ", channel: "
+//                                + channelConfig);
+                        int bufferSize = AudioRecord.getMinBufferSize(rate, channelConfig, audioFormat);
+
+                        if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
+                            // check if we can instantiate and have a success
+                            AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, rate, channelConfig, audioFormat, bufferSize);
+
+                            if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
+                                Log.d(TAG, "Rate: " + rate);
+                                output.add(rate);
+                                recorder.release();
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, rate + "Exception, keep trying.",e);
+                    }
+                }
+            }
+        }
+        return output;
     }
 }
