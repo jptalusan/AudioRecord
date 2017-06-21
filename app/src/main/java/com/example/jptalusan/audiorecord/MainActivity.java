@@ -4,7 +4,9 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -60,11 +62,11 @@ public class MainActivity extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        sampleRates = (Spinner) findViewById(spinner);
 
         checkAndRequestPermissions();
         //Set permissions here
 
-        sampleRates = (Spinner) findViewById(spinner);
 
         setButtonHandlers();
         enableButtons(false);
@@ -108,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
                         .setSmallIcon(R.drawable.icon)
                         .setContentTitle("Audio Recorder")
                         .setContentText("Recording...");
-
+        mBuilder.setAutoCancel(true);
         mBuilder.build().flags |= Notification.FLAG_AUTO_CANCEL;
 
     }
@@ -136,6 +138,11 @@ public class MainActivity extends AppCompatActivity {
         audioFileName = Utilities.generateFileName();
         name.setText(audioFileName);
 
+        if (recorder == null) {
+            recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                    sampleRate, RECORDER_CHANNELS,
+                    RECORDER_AUDIO_ENCODING, bufferSize);
+        }
         recorder.startRecording();
         isRecording = true;
         recordingThread = new Thread(new Runnable() {
@@ -238,17 +245,21 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
                 case R.id.btnStop: {
+                    PendingIntent resultPendingIntent = PendingIntent.getActivity(MainActivity.this,  0, new Intent(), 0);
                     enableButtons(false);
                     // Sets an ID for the notification
                     int mNotificationId = 001;
-                    // Gets an instance of the NotificationManager service
-                    NotificationManager mNotifyMgr =
-                            (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                     // Builds the notification and issues it.
                     mBuilder.setContentTitle("Saved at:" + audioFileName);
                     mBuilder.setContentText("Stopped Recording...");
+                    mBuilder.setContentIntent(resultPendingIntent);
+                    // Gets an instance of the NotificationManager service
+                    NotificationManager mNotifyMgr =
+                            (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                     mNotifyMgr.notify(mNotificationId, mBuilder.build());
                     stopRecording();
+                    Utilities.counter = 0;
+                    Utilities.mRmsSmoothed = 0.0;
                     break;
                 }
             }
@@ -278,6 +289,11 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[listPermissionsNeeded.size()]),REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS);
             return false;
         }
+
+        adapter = new ArrayAdapter<>(getApplicationContext(),
+                android.R.layout.simple_spinner_item, Utilities.findAudioRecord());
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sampleRates.setAdapter(adapter);
         return true;
     }
 

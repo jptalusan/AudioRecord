@@ -19,7 +19,8 @@ import java.util.Locale;
 public class Utilities {
     //https://www.dsprelated.com/showthread/comp.dsp/29246-1.php
     private static final String TAG = "Utilities";
-    private static double mRmsSmoothed = 0;
+    public static double mRmsSmoothed = 0;
+    public static int counter = 0;
 
     private static final float MAX_16_BIT = 32768;
     private static final float FUDGE = 0.6f;
@@ -59,7 +60,8 @@ public class Utilities {
     }
 
     static double getPower(short[] buffer){
-        Log.d("UtilRMS:", mRmsSmoothed + "");
+        Log.d("rain316: ", "counter: " + counter);
+        Log.d("UtilRMS rain316:", mRmsSmoothed + "");
 //        recorder.read(sData, 0, BufferElements2Rec);
         /*
          * Noise level meter begins here
@@ -76,12 +78,13 @@ public class Utilities {
         // display.*/
         //TODO: Try removing the smoothing here and then just get the same data and record and check
         mRmsSmoothed = mRmsSmoothed * mAlpha + (1 - mAlpha) * rms;
-//		Log.w("rain316", "RMS Smoothed: " + Double.toString(mRmsSmoothed));
+		Log.w("rain316", "RMS Smoothed: " + Double.toString(mRmsSmoothed));
         double rmsdB = -1;
         if (mGain * mRmsSmoothed > 0.0f)
             rmsdB = 20.0 * Math.log10(mGain * mRmsSmoothed);
         else rmsdB = -30.0;
-        //Log.w("rain316", "RMS dB: " + Double.toString(rmsdB));
+        Log.w("rain316", "RMS dB: " + Double.toString(rmsdB));
+        counter++;
         return rmsdB;
     }
 
